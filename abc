@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Panel</title>
+<meta name="theme-color" content="#0b0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Panel">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0b0f14;--card:#141a22;--line:#233040;--txt:#e8eef5;--dim:#8ea1b5;--acc:#3ddc84;--warn:#ffb020;--bad:#ff5a5a}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.45 -apple-system,system-ui,sans-serif}
+body{padding:env(safe-area-inset-top) 0 calc(74px + env(safe-area-inset-bottom));overflow-x:hidden}
+header{position:sticky;top:0;z-index:9;background:rgba(11,15,20,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:17px;margin:0;letter-spacing:.3px}
+.tag{font-size:12px;font-weight:700;color:#06210f;background:var(--acc);padding:3px 9px;border-radius:99px}
+main{padding:14px 16px;max-width:640px;margin:0 auto}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:22px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.price{font-weight:800;color:var(--acc);font-size:17px}
+.meta{font-size:12.5px;color:var(--dim)}
+.chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#1e2a38;color:var(--dim)}
+.chip.p{background:#3a2c07;color:var(--warn)}
+.chip.ok{background:#0d3320;color:var(--acc)}
+.chip.sold{background:#2a1a1a;color:var(--bad)}
+input,select,textarea,button{font:inherit;color:var(--txt);background:#0f151d;border:1px solid var(--line);border-radius:11px;padding:11px;width:100%}
+button{cursor:pointer;font-weight:700;background:#1a2330;border-color:#2b3a4c}
+button.pri{background:var(--acc);color:#06210f;border:none}
+button.sm{padding:8px 10px;font-size:13px;width:auto;border-radius:9px}
+button.ghost{background:transparent}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stack>*{margin-bottom:8px}
+.filters{display:flex;gap:7px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px}
+.filters button{width:auto;white-space:nowrap;padding:7px 13px;font-size:13px;border-radius:99px;background:#101720}
+.filters button.on{background:var(--acc);color:#06210f;border-color:transparent}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(15,21,29,.97);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+nav button{background:none;border:none;font-size:11px;font-weight:600;color:var(--dim);display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0}
+nav button.on{color:var(--acc)}
+nav .ic{font-size:19px;line-height:1}
+.empty{color:var(--dim);font-size:14px;text-align:center;padding:26px 10px}
+.chest{background:linear-gradient(140deg,#0d3320,#0b1a14);border-color:#1d5236}
+.chest .price{font-size:26px}
+.img{width:100%;height:130px;object-fit:cover;border-radius:10px;margin-bottom:9px;background:#0f151d}
+#toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:88px;background:var(--acc);color:#06210f;font-weight:700;font-size:14px;padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none;z-index:50}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+hr{border:none;border-top:1px solid var(--line);margin:14px 0}
+</style>
+</head>
+<body>
+<header><h1 id="hdTitle">Mercado</h1><span class="tag" id="hdTag">—</span></header>
+<main id="view"></main>
+<nav>
+  <button onclick="go('market')" id="n-market"><span class="ic">🏷️</span>Mercado</button>
+  <button onclick="go('gang')" id="n-gang"><span class="ic">🩸</span>Pandilla</button>
+  <button onclick="go('me')" id="n-me"><span class="ic">👤</span>Perfil</button>
+</nav>
+<div id="toast"></div>
+<script>
+const KEY='panel_v1';
+const RANKS=['Líder','Mano derecha','Soldado','Recluta'];
+const CATS=['Coches','Armas','Servicios','Otros'];
+const fmt=n=>'$'+Math.round(n).toLocaleString('es-MX');
+let S, tab='market', filtro='Todos';
+
+function seed(){return{
+ user:{id:'u1',name:'Tú',rank:'Líder'},
+ gang:{name:'Marabunta',tag:'MBT',chest:48000},
+ members:[
+  {id:'u1',name:'Tú',rank:'Líder',pts:12},
+  {id:'u2',name:'Nico',rank:'Mano derecha',pts:34},
+  {id:'u3',name:'Rulo',rank:'Soldado',pts:21},
+  {id:'u4',name:'Kira',rank:'Recluta',pts:4}],
+ listings:[
+  {id:'l1',t:'Sultan RS tuneado',cat:'Coches',p:85000,by:'Nico',st:'aprobado',img:'',d:'Full tune, papeles limpios.'},
+  {id:'l2',t:'AK-47 + 300 balas',cat:'Armas',p:42000,by:'Rulo',st:'aprobado',img:'',d:'Entrego en el muelle.'},
+  {id:'l3',t:'Mecánico 24h',cat:'Servicios',p:8000,by:'Kira',st:'pendiente',img:'',d:'Reparaciones en cualquier punto.'}],
+ moves:[{id:'m1',t:'Venta Sultan RS (comisión 5%)',a:4250,by:'Sistema',d:'+'},{id:'m2',t:'Compra de munición',a:-12000,by:'Tú',d:'-'}],
+ sanc:[{id:'s1',name:'Kira',r:'No reportó farmeo semanal',by:'Nico'}]};
+}
+function load(){try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}const s=seed();localStorage.setItem(KEY,JSON.stringify(s));return s}
+function save(){localStorage.setItem(KEY,JSON.stringify(S))}
+const canManage=()=>['Líder','Mano derecha'].includes(S.user.rank);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1600)}
+function uid(){return Math.random().toString(36).slice(2,9)}
+function go(t){tab=t;render();window.scrollTo(0,0)}
+
+function render(){
+ document.getElementById('hdTitle').textContent={market:'Mercado',gang:'Pandilla',me:'Perfil'}[tab];
+ document.getElementById('hdTag').textContent=S.gang.tag;
+ ['market','gang','me'].forEach(k=>document.getElementById('n-'+k).classList.toggle('on',k===tab));
+ document.getElementById('view').innerHTML={market:vMarket,gang:vGang,me:vMe}[tab]();
+}
+
+function vMarket(){
+ const lista=S.listings.filter(l=>filtro==='Todos'||l.cat===filtro);
+ const vis=lista.filter(l=>l.st==='aprobado'||canManage()||l.by===S.user.name);
+ return `
+ <div class="filters">${['Todos',...CATS].map(c=>`<button class="${filtro===c?'on':''}" onclick="filtro='${c}';render()">${c}</button>`).join('')}</div>
+ <div class="card stack">
+  <strong style="font-size:14px">Publicar anuncio</strong>
+  <input id="f_t" placeholder="Qué vendes">
+  <div class="grid2">
+   <select id="f_c">${CATS.map(c=>`<option>${c}</option>`).join('')}</select>
+   <input id="f_p" type="number" inputmode="numeric" placeholder="Precio">
+  </div>
+  <input id="f_i" placeholder="URL de la foto (opcional)">
+  <input id="f_d" placeholder="Detalles / punto de entrega">
+  <button class="pri" onclick="addListing()">Publicar</button>
+ </div>
+ <h2>Anuncios (${vis.length})</h2>
+ ${vis.length?vis.map(l=>`
+  <div class="card">
+   ${l.img?`<img class="img" src="${esc(l.img)}" alt="">`:''}
+   <div class="row"><strong>${esc(l.t)}</strong><span class="price">${fmt(l.p)}</span></div>
+   <div class="meta">${esc(l.cat)} · vende ${esc(l.by)}</div>
+   ${l.d?`<div class="meta">${esc(l.d)}</div>`:''}
+   <div class="row" style="margin-top:9px">
+    <span class="chip ${l.st==='aprobado'?'ok':l.st==='pendiente'?'p':'sold'}">${l.st}</span>
+    <div style="display:flex;gap:6px">
+     ${l.st==='pendiente'&&canManage()?`<button class="sm pri" onclick="approve('${l.id}')">Aprobar</button>`:''}
+     ${l.st==='aprobado'?`<button class="sm" onclick="sold('${l.id}')">Vendido</button>`:''}
+     ${canManage()||l.by===S.user.name?`<button class="sm ghost" onclick="delListing('${l.id}')">Borrar</button>`:''}
+    </div>
+   </div>
+  </div>`).join(''):'<div class="empty">Sin anuncios en esta categoría.</div>'}
+ <p class="meta">Comisión de pandilla: 5% sobre cada venta cerrada, va a la caja.</p>`;
+}
+function addListing(){
+ const t=document.getElementById('f_t').value.trim(), p=+document.getElementById('f_p').value;
+ if(!t||!p)return toast('Falta título o precio');
+ S.listings.unshift({id:uid(),t,cat:document.getElementById('f_c').value,p,by:S.user.name,st:canManage()?'aprobado':'pendiente',img:document.getElementById('f_i').value.trim(),d:document.getElementById('f_d').value.trim()});
+ save();render();toast(canManage()?'Publicado':'Enviado a revisión');
+}
+function approve(id){const l=S.listings.find(x=>x.id===id);l.st='aprobado';save();render();toast('Aprobado')}
+function delListing(id){S.listings=S.listings.filter(x=>x.id!==id);save();render();toast('Borrado')}
+function sold(id){
+ const l=S.listings.find(x=>x.id===id);l.st='vendido';
+ const com=Math.round(l.p*0.05);S.gang.chest+=com;
+ S.moves.unshift({id:uid(),t:`Comisión: ${l.t}`,a:com,by:S.user.name,d:'+'});
+ save();render();toast(`Vendido, +${fmt(com)} a caja`);
+}
+
+function vGang(){
+ const total=S.members.reduce((a,m)=>a+m.pts,0)||1;
+ const rank=[...S.members].sort((a,b)=>b.pts-a.pts);
+ return `
+ <div class="card chest">
+  <div class="meta">Caja de ${esc(S.gang.name)}</div>
+  <div class="price">${fmt(S.gang.chest)}</div>
+ </div>
+ <h2>Miembros (${S.members.length})</h2>
+ ${S.members.map(m=>`
+  <div class="card">
+   <div class="row"><strong>${esc(m.name)}</strong><span class="chip">${esc(m.rank)}</span></div>
+   <div class="meta">${m.pts} pts de actividad</div>
+   ${canManage()&&m.id!==S.user.id?`<div class="row" style="margin-top:8px">
+     <select class="sm" style="width:auto" onchange="setRank('${m.id}',this.value)">${RANKS.map(r=>`<option ${r===m.rank?'selected':''}>${r}</option>`).join('')}</select>
+     <button class="sm ghost" onclick="kick('${m.id}')">Expulsar</button>
+   </div>`:''}
+  </div>`).join('')}
+ ${canManage()?`<div class="card stack"><strong style="font-size:14px">Añadir miembro</strong>
+   <input id="m_n" placeholder="Nombre"><button class="pri" onclick="addMember()">Añadir</button></div>`:''}
+ <h2>Ranking</h2>
+ ${rank.map(m=>`<div class="card"><div class="row"><span>${esc(m.name)}</span><span class="meta">${m.pts}</span></div>
+   <div style="height:6px;background:#0f151d;border-radius:9px;margin-top:7px"><div style="height:6px;background:var(--acc);border-radius:9px;width:${Math.round(m.pts/total*100)}%"></div></div></div>`).join('')}
+ <h2>Movimientos de caja</h2>
+ ${canManage()?`<div class="card stack"><div class="grid2">
+   <input id="mv_t" placeholder="Concepto"><input id="mv_a" type="number" inputmode="numeric" placeholder="Monto (+/-)">
+  </div><button class="pri" onclick="addMove()">Registrar</button></div>`:''}
+ ${S.moves.length?S.moves.map(m=>`<div class="card"><div class="row"><span>${esc(m.t)}</span><span class="price" style="color:${m.a>0?'var(--acc)':'var(--bad)'}">${m.a>0?'+':''}${fmt(m.a)}</span></div><div class="meta">${esc(m.by)}</div></div>`).join(''):'<div class="empty">Sin movimientos.</div>'}
+ <h2>Sanciones internas</h2>
+ ${canManage()?`<div class="card stack"><input id="s_n" placeholder="Quién"><input id="s_r" placeholder="Motivo"><button class="pri" onclick="addSanc()">Sancionar</button></div>`:''}
+ ${S.sanc.length?S.sanc.map(s=>`<div class="card"><strong>${esc(s.name)}</strong><div class="meta">${esc(s.r)} · por ${esc(s.by)}</div></div>`).join(''):'<div class="empty">Sin sanciones.</div>'}`;
+}
+function addMember(){const n=document.getElementById('m_n').value.trim();if(!n)return toast('Falta nombre');S.members.push({id:uid(),name:n,rank:'Recluta',pts:0});save();render();toast('Miembro añadido')}
+function setRank(id,r){const m=S.members.find(x=>x.id===id);m.rank=r;save();render();toast('Rango actualizado')}
+function kick(id){S.members=S.members.filter(x=>x.id!==id);save();render();toast('Expulsado')}
+function addMove(){const t=document.getElementById('mv_t').value.trim(),a=+document.getElementById('mv_a').value;if(!t||!a)return toast('Falta concepto o monto');S.moves.unshift({id:uid(),t,a,by:S.user.name,d:a>0?'+':'-'});S.gang.chest+=a;save();render();toast('Registrado')}
+function addSanc(){const n=document.getElementById('s_n').value.trim(),r=document.getElementById('s_r').value.trim();if(!n||!r)return toast('Faltan datos');S.sanc.unshift({id:uid(),name:n,r,by:S.user.name});save();render();toast('Sanción creada')}
+
+function vMe(){
+ return `
+ <div class="card">
+  <div class="meta">Jugador</div>
+  <div class="row"><strong style="font-size:18px">${esc(S.user.name)}</strong><span class="chip">${esc(S.user.rank)}</span></div>
+  <div class="meta">Pandilla ${esc(S.gang.name)} [${esc(S.gang.tag)}]</div>
+ </div>
+ <h2>Editar</h2>
+ <div class="card stack">
+  <input id="u_n" value="${esc(S.user.name)}" placeholder="Tu nombre">
+  <select id="u_r">${RANKS.map(r=>`<option ${r===S.user.rank?'selected':''}>${r}</option>`).join('')}</select>
+  <div class="grid2"><input id="g_n" value="${esc(S.gang.name)}" placeholder="Pandilla"><input id="g_t" value="${esc(S.gang.tag)}" placeholder="Tag"></div>
+  <button class="pri" onclick="saveMe()">Guardar</button>
+ </div>
+ <h2>Respaldo</h2>
+ <div class="card stack">
+  <button onclick="exportar()">Exportar datos</button>
+  <textarea id="imp" rows="4" placeholder="Pega aquí un respaldo para importar"></textarea>
+  <button onclick="importar()">Importar</button>
+  <button class="ghost" onclick="reset()">Restablecer todo</button>
+ </div>
+ <p class="meta">Datos guardados en este iPhone. Si borras los datos de Safari, se pierden: exporta de vez en cuando.</p>`;
+}
+function saveMe(){
+ const n=document.getElementById('u_n').value.trim();if(!n)return toast('Falta nombre');
+ const viejo=S.user.name;
+ S.user.name=n;S.user.rank=document.getElementById('u_r').value;
+ S.gang.name=document.getElementById('g_n').value.trim()||S.gang.name;
+ S.gang.tag=(document.getElementById('g_t').value.trim()||S.gang.tag).toUpperCase().slice(0,4);
+ const yo=S.members.find(m=>m.id===S.user.id);if(yo){yo.name=n;yo.rank=S.user.rank}
+ S.listings.forEach(l=>{if(l.by===viejo)l.by=n});
+ save();render();toast('Guardado');
+}
+function exportar(){document.getElementById('imp').value=JSON.stringify(S);toast('Copia el texto y guárdalo')}
+function importar(){try{const d=JSON.parse(document.getElementById('imp').value);if(!d.user||!d.gang)throw 0;S=d;save();render();toast('Importado')}catch(e){toast('Respaldo inválido')}}
+function reset(){if(!confirm('¿Borrar todo?'))return;S=seed();save();render();toast('Restablecido')}
+
+S=load();render();
+</script>
+</body>
+</html>
